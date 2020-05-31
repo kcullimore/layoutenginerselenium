@@ -2,8 +2,11 @@ Package: layoutEngineRSelenium
 Type: Package
 Title: Render HTML Using RSelenium
 Version: 0.1-0
-Authors@R: c(person("Paul", "Murrell", 
+Authors@R: c(person("Kane", "Cullimore", 
                     role=c("aut", "cre"),
+                    email="kane@ia.house"),
+	    person("Paul", "Murrell", 
+                    role=c("ctb", "cph"),
                     email="paul@stat.auckland.ac.nz"),
              person("George", "Crawford",
                     role=c("ctb", "cph")))
