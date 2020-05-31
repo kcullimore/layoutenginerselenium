@@ -1,0 +1,21 @@
+
+importFrom("layoutEngine",
+           "copyAssets",
+           "fontFiles",
+           "layoutFields",
+           "makeLayout",
+           "makeEngine")
+
+importFrom("RSelenium",
+           "remoteDriver" )
+
+importFrom("xml2",
+           "xml_add_child",
+           "xml_children",
+           "xml_find_all",
+           "xml_find_first")
+
+importFrom("utils",
+           "read.csv")
+
+export("RSeleniumEngine")

@@ -1,0 +1,16 @@
+Package: layoutEngineRSelenium
+Type: Package
+Title: Render HTML Using RSelenium
+Version: 0.1-0
+Authors@R: c(person("Paul", "Murrell", 
+                    role=c("aut", "cre"),
+                    email="paul@stat.auckland.ac.nz"),
+             person("George", "Crawford",
+                    role=c("ctb", "cph")))
+Description: A "backend" package for 'layoutEngine' that is based on the
+             R package 'RSelenium'.
+Depends: layoutEngine (>= 0.3-0)
+Imports: RSelenium (>= 1.7.0), xml2
+Suggests: gyre, xtable
+SystemRequirements: fontforge
+License: GPL-3
