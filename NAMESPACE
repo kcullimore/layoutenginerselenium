@@ -7,7 +7,7 @@ importFrom("layoutEngine",
            "makeEngine")
 
 importFrom("RSelenium",
-           "remoteDriver" )
+           "remoteDriver")
 
 importFrom("xml2",
            "xml_add_child",

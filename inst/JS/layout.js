@@ -96,10 +96,10 @@ function writeBox(node, index, parentName) {
     var elName = elementName(node, index, parentName);
     line = line + elName + ",";
     var bbox = node.getBoundingClientRect();
-    line = line + bbox.left + ",";
-    line = line + bbox.top + ",";
-    line = line + bbox.width + ",";
-    line = line + bbox.height + ",";
+    line = line + bbox.left.toFixed(6) + ",";
+    line = line + bbox.top.toFixed(6) + ",";
+    line = line + bbox.width.toFixed(6) + ",";
+    line = line + bbox.height.toFixed(6) + ",";
     // No text information
     // (baseline, text, family, bold, italic)
     line = line + "NA,NA,NA,NA,NA" + ",";

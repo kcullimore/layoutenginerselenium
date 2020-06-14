@@ -9,6 +9,7 @@ RSeleniumLayout <- function(html, width, height, fonts, device) {
         result <- dir.create(wd, showWarnings=TRUE)
         if (!result) stop("Creation of working directory failed")
     }
+    ## Create directory for assets
     assetDir <- file.path(wd, "assets")
     if (!dir.exists(assetDir)) {
         result <- dir.create(assetDir, showWarnings=TRUE)    
@@ -28,25 +29,28 @@ RSeleniumLayout <- function(html, width, height, fonts, device) {
                           system.file("FF", "pf2ttf",
                                       package="layoutEngineRSelenium"),
                           " ", file.path(assetDir, basename(i))))
-        }
-    }    
+        }}
 
 
-    ## Copy any assets
-    copyAssets(html, assetDir)
-    ## Append layout calculation code
+    ## Copy any assets to asset directory
+    copyAssets(html, asssetDir)
     file.copy(system.file("JS", "font-baseline", "index.js",
                           package="layoutEngineRSelenium"),
               assetDir)
     file.copy(system.file("JS", "layout.js",
                           package="layoutEngineRSelenium"),
               assetDir)
+    ## Add script tags to layout.js file
     body <- xml_find_first(html$doc, "body")
-    ## xml_add_child(body, "script", src="/assets/index.js")
-    ## xml_add_child(body, "script", src="/assets/layout.js")
+    xml_add_child(body, "script", src="assets/index.js")
+    xml_add_child(body, "script", src="assets/layout.js")
 
-    HTML <- as.character(xml_children(body))
-    head <- xml_find_all(html$doc, "head/*")
+    ## Create index.html flie to navigate to with RSelenium 
+    fileConn <- file(paste0(wd, "/index.html"), "w")
+    write(paste0(html$doc, collapse=""), file=fileConn, append=FALSE)
+    close(fileConn)
+
+    
     ## Establish R http server root
     oldwd <- getwd()
     if (!is.null(oldwd)) 
@@ -56,98 +60,63 @@ RSeleniumLayout <- function(html, width, height, fonts, device) {
     browser()
     
     ## Directory location to serve local files
-    srcDir <- paste0(oldwd, "/src")
-    jsDir <- system.file("JS", package="layoutEngineRSelenium")
+    ##srcDir <- paste0(oldwd, "/src")
+    ##jsDir <- system.file("JS", package="layoutEngineRSelenium")
+
+    ## Close docker container if open
+    ##system("docker stop RSeleniumContainer")
 
     ## Setup to open docker browser within host machine (firefox)
-    system(paste("docker run -d --rm",
+    system(paste("docker run -d --rm --name RSeleniumContainer",
                  "--env DISPLAY=unix$DISPLAY",
                  "--volume /dev/shm:/dev/shm",
                  "--volume /tmp/.X11-unix:/tmp/.X11-unix",
-                 "--volume", paste0(srcDir, ":/src"),
-                 "--volume", paste0(jsDir, ":/JS"),
-                 "--volume", paste0(assetDir, ":/assets"),
+            ##     "--volume", paste0(srcDir, ":/src"),
+            ##     "--volume", paste0(jsDir, ":/JS"),
+                 "--volume", paste0(wd, ":/tmp/Rsrc"),
                  "-p 4444:4444",
                  "selenium/standalone-firefox-debug:latest"))
-
-    
 
     ## Connect to server
     remDr <- remoteDriver(remoteServerAddr = "localhost",
                           port = 4444L,
                           browserName = "firefox")
 
-    ## Send request to server to initialize session
+    ## Send request to server to initialize session (give it a time lime to execute)
+    ## session <- NULL
+    ## now <- Sys.time()
+    ## while (is.null(session$id) &&
+    ##        Sys.time() - now < 5) {
+    ##            session <- remDr$open(silent = TRUE)               
+    ## }
+    ## if (session$id == NULL) {
+    ##     stop("RSelenium failed to open session")
+    ## }
+    
+    ## Open RSelenium hosted browser and navigate to a index.html file
     remDr$open(silent = TRUE)
+    remDr$navigate("file:///tmp/Rsrc/index.html")
     
-    ## Naigate to a template file
-    remDr$navigate("file:///src/basic.html")
-    
-    ## Append head elements to head element
+    ## Set the page <body> size to match R graphics device and
+    ## add and execute function call from layout.js to calculate the page layout
     remDr$executeScript(
               script="
-    const headIn = arguments[0];
-    document.head.innerHTML += headIn;
-    ",
-    args=list(paste(head, collapse=""))
-    )
-    
-    ## Replace body element with HTML
-    remDr$executeScript(
-              script="
-    const newHTML = arguments[0];
-    document.body.innerHTML = newHTML;
-    ",
-    args=list(paste(HTML, collapse=""))
-    )
-    
-    ## Set the page <body> size
-    remDr$executeScript(
-              script="
-    const newWidth = arguments[0];
-    const newHeight = arguments[1];
-    const body = document.body;
-    body.style.width = newWidth;
-    body.style.height = newHeight;
-    ",
-    args=list(as.character(width*dpi), as.character(height*dpi))
-    )
-
-    ## Add script to calculate the page layout
-    remDr$executeScript(
-              script="
-     const script_1 = document.createElement('script');
-     script_1.src = '/assets/index.js';
-     document.body.appendChild(script_1);
-     const script_2 = document.createElement('script');
-     script_2.src = '/assets/layout.js';
-     document.body.appendChild(script_2);
-     "
-     )
-
-    ## Add script to calculate the page layout
-    remDr$executeScript(
-              script="
+    document.body.style.width = arguments[0];
+    document.body.style.height = arguments[1];
     const script = document.createElement('script');
     script.innerHTML = 'calculateLayout()';
     document.body.appendChild(script);
-    "
+    ",
+    args=list(as.character(width*dpi), as.character(height*dpi))
     )
-
-    ## Temp: Make text visible to use RSelenium - getElementText() method
-    remDr$executeScript(
-              script="
-    document.getElementById('layoutEngineRSeleniumresult').style.display = 'inline';
-    "
-    )
-
-    ## Get the layout info back
-    layoutDIV <- remDr$findElement("id", "layoutEngineRSeleniumresult")
-    layoutCSV <- layoutDIV$getElementText()[[1]]
-
+    
+    ## Get the layout info back to pass back to R
+    layoutCSV <- remDr$findElement(
+                           "id", "layoutEngineRSeleniumresult"
+                       )$getElementAttribute("innerHTML")[[1]]
     
     ##closePage(page)
-    remDr$close() 
+    ##remDr$close() 
     
     layoutDF <- read.csv(textConnection(layoutCSV),
                          header=FALSE, stringsAsFactors=FALSE,
