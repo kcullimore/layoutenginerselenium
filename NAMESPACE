@@ -13,7 +13,8 @@ importFrom("xml2",
            "xml_add_child",
            "xml_children",
            "xml_find_all",
-           "xml_find_first")
+           "xml_find_first",
+           "xml_set_attr")
 
 importFrom("utils",
            "read.csv")

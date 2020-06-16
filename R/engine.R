@@ -31,7 +31,6 @@ RSeleniumLayout <- function(html, width, height, fonts, device) {
                           " ", file.path(assetDir, basename(i))))
         }}
 
-
     ## Copy any assets to asset directory
     copyAssets(html, asssetDir)
     file.copy(system.file("JS", "font-baseline", "index.js",
@@ -40,39 +39,28 @@ RSeleniumLayout <- function(html, width, height, fonts, device) {
     file.copy(system.file("JS", "layout.js",
                           package="layoutEngineRSelenium"),
               assetDir)
-    ## Add script tags to layout.js file
+    ## Add script tags to font-baseline/index.js &  layout.js file
     body <- xml_find_first(html$doc, "body")
     xml_add_child(body, "script", src="assets/index.js")
     xml_add_child(body, "script", src="assets/layout.js")
 
+    ## Set width & height of body to match arguments
+    xml_set_attr(body,
+                 "style",
+                 paste0("width: ", as.character(width*dpi), "px; ",
+                        "height: ", as.character(height*dpi), "px;"))
+    
     ## Create index.html flie to navigate to with RSelenium 
     fileConn <- file(paste0(wd, "/index.html"), "w")
     write(paste0(html$doc, collapse=""), file=fileConn, append=FALSE)
     close(fileConn)
 
-    
-    ## Establish R http server root
-    oldwd <- getwd()
-    if (!is.null(oldwd)) 
-        on.exit(setwd(oldwd))
-    setwd(wd)
-
-    browser()
-    
-    ## Directory location to serve local files
-    ##srcDir <- paste0(oldwd, "/src")
-    ##jsDir <- system.file("JS", package="layoutEngineRSelenium")
-
-    ## Close docker container if open
-    ##system("docker stop RSeleniumContainer")
-
     ## Setup to open docker browser within host machine (firefox)
-    system(paste("docker run -d --rm --name RSeleniumContainer",
+    dockerID <- "rselenium-container"
+    system(paste(paste("docker run -d --rm --name", dockerID),
                  "--env DISPLAY=unix$DISPLAY",
                  "--volume /dev/shm:/dev/shm",
                  "--volume /tmp/.X11-unix:/tmp/.X11-unix",
-            ##     "--volume", paste0(srcDir, ":/src"),
-            ##     "--volume", paste0(jsDir, ":/JS"),
                  "--volume", paste0(wd, ":/tmp/Rsrc"),
                  "-p 4444:4444",
                  "selenium/standalone-firefox-debug:latest"))
@@ -81,42 +69,28 @@ RSeleniumLayout <- function(html, width, height, fonts, device) {
     remDr <- remoteDriver(remoteServerAddr = "localhost",
                           port = 4444L,
                           browserName = "firefox")
-
-    ## Send request to server to initialize session (give it a time lime to execute)
-    ## session <- NULL
-    ## now <- Sys.time()
-    ## while (is.null(session$id) &&
-    ##        Sys.time() - now < 5) {
-    ##            session <- remDr$open(silent = TRUE)               
-    ## }
-    ## if (session$id == NULL) {
-    ##     stop("RSelenium failed to open session")
-    ## }
-    
-    ## Open RSelenium hosted browser and navigate to a index.html file
+  
+    ## browser()
+    Sys.sleep(2)
+    ## Open RSelenium hosted browser 
     remDr$open(silent = TRUE)
+
+    ## Navigate to a index.html file
     remDr$navigate("file:///tmp/Rsrc/index.html")
     
     ## Set the page <body> size to match R graphics device and
     ## add and execute function call from layout.js to calculate the page layout
     remDr$executeScript(
               script="
-    document.body.style.width = arguments[0];
-    document.body.style.height = arguments[1];
     const script = document.createElement('script');
     script.innerHTML = 'calculateLayout()';
     document.body.appendChild(script);
-    ",
-    args=list(as.character(width*dpi), as.character(height*dpi))
-    )
+    ")
     
     ## Get the layout info back to pass back to R
     layoutCSV <- remDr$findElement(
                            "id", "layoutEngineRSeleniumresult"
                        )$getElementAttribute("innerHTML")[[1]]
-    
-    ##closePage(page)
-    ##remDr$close() 
     
     layoutDF <- read.csv(textConnection(layoutCSV),
                          header=FALSE, stringsAsFactors=FALSE,
