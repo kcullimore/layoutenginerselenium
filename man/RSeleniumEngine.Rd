@@ -11,6 +11,6 @@
 RSeleniumEngine
 }
 \author{
-  Paul Murrell
+  Kane Cullimore
 }
 \keyword{ dplot }

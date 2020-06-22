@@ -12,7 +12,7 @@ Authors@R: c(person("Kane", "Cullimore",
                     role=c("ctb", "cph")))
 Description: A "backend" package for 'layoutEngine' that is based on the
              R package 'RSelenium'.
-Depends: layoutEngine (>= 0.3-0)
+Depends: layoutEngine (>= 0.2-0)
 Imports: RSelenium (>= 1.7.0), xml2
 Suggests: gyre, xtable
 SystemRequirements: fontforge

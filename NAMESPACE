@@ -19,4 +19,5 @@ importFrom("xml2",
 importFrom("utils",
            "read.csv")
 
-export("RSeleniumEngine")
+export("dockerClose",
+       "RSeleniumEngine")
