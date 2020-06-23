@@ -2,71 +2,7 @@
 ## CSS standard says 1px = 1/96in !?
 dpi <- 96
 
-dockerServer <- function(dir) {
-    RSeleniumOptions <- getOption("layoutEngine.RSelenium")
-    ## Debugging options
-    debug <- RSeleniumOptions$debug
-    ## Default browser options
-    browser <- RSeleniumOptions$browser
-    ## Default docker options
-    docker  <- RSeleniumOptions$docker
-    ## If docker container is running assign Container ID
-    id <- system(paste0(
-        "docker ps --filter 'name=", docker$name, "' --format '{{.ID}}'"),
-        intern=TRUE)
-    ## If docker container is NOT running then spin up
-    if (length(id) > 0) {
-        print("Docker container already running")
-    } else {
-        print("Spinning up Docker container...")
-        ## Docker image to run
-        image <- ifelse(is.null(docker$imageRequest),
-                        paste0("selenium/standalone-", browser$type,
-                               ifelse(browser$headless, ":latest", "-debug:latest")),
-                        docker$imageRequest)
-        print(paste0("Setting up RSelenium with a ", browser$type,
-                     " browser running on Docker container built from ",
-                     image, "."))
-        ## Update docker image on host machine
-        if (docker$freshPull) {
-            update <- system(paste("docker pull", image), intern=TRUE)
-        }
-        ## Check OS to match system commands
-        os <- Sys.info()["sysname"]
-        if (os == "Linux") {
-            ## Link docker to host display
-            display_setup <- paste("--env DISPLAY=unix$DISPLAY",
-                                   "--volume /dev/shm:/dev/shm",
-                                   "--volume /tmp/.X11-unix:/tmp/.X11-unix")
-            ## Setup to open docker contained browser within host machine
-            output <- system(paste(
-                paste("docker run -d --rm --name", docker$name),
-                ifelse(browser$headless, "", display_setup),
-                "--volume", paste0(dir, ":/tmp/Rsrc"),
-                "-p ", paste0(browser$port, ":", browser$port), 
-                image),
-                intern=TRUE)
-            id <- substr(tail(output, 1), 1, 12)
-            print(paste("Docker container created with id:", id))
-        } else {
-            stop("Only the Linux OS is supported by RSeleniumEngine at this time.")
-        }
-    }
-    list(id=id, name=docker$name, dir=dir, browser=browser$type,
-         port=browser$port, url=browser$url,
-         persist=browser$persist, headless=browser$headless,
-         timeout=debug$timeout)
-}
-
-dockerClose <- function() {
-    RSeleniumOptions <- getOption("layoutEngine.RSelenium")
-    name <- RSeleniumOptions$docker$name
-    dockerClosed <- system(paste("docker stop", name), intern=TRUE)
-    print(paste0("Docker container '", dockerClosed, "' closed."))
-}
-
-
-RSeleniumLayout <- function(html, width, height, fonts, device) {
+createTmpDir <- function() {
     ## Work in temp directory
     wd <- file.path(tempdir(), "layoutEngineRSelenium")
     if (!dir.exists(wd)) {
@@ -74,14 +10,96 @@ RSeleniumLayout <- function(html, width, height, fonts, device) {
         if (!result) stop("Creation of working directory failed")
     }
     ## Create directory for assets
-    assetDir <- file.path(wd, "assets")
-    if (!dir.exists(assetDir)) {
-        result <- dir.create(assetDir, showWarnings=TRUE)    
+    asset_dir <- file.path(wd, "assets")
+    if (!dir.exists(asset_dir)) {
+        result <- dir.create(asset_dir, showWarnings=TRUE)    
         if (!result) stop("Creation of working directory failed")
-    }   
+    }
+    wd
+}
+
+imageTag <- function(browser_type, headless, image_tag) {
+    image <- ifelse(is.null(image_tag),
+                    paste0("selenium/standalone-", browser_type,
+                           ifelse(headless, ":latest", "-debug:latest")),
+                    image_tag)
+    print(paste("Container to be built from image:", image))
+    image
+}
+
+dockerRunCmd <- function(dir, image, name, headless, port) {
+    ## Check OS to match system commands
+    os <- Sys.info()["sysname"]
+    if (os == "Linux") {
+        ## Link docker to host display
+        display_setup <- paste("--env DISPLAY=unix$DISPLAY",
+                               "--volume /dev/shm:/dev/shm",
+                               "--volume /tmp/.X11-unix:/tmp/.X11-unix")
+    } else {
+        stop("Only the Linux OS is supported by RSeleniumEngine at this time.")
+    }
+    paste("docker run -d --rm --name", name,
+          "--shm-size=2g",
+          ifelse(headless, "", display_setup),
+          "--volume", paste0(dir, ":/tmp/src"),
+          "-p ", paste0(port, ":", port), 
+          image)
+}
+
+dockerRun <- function(name="rselenium-container", port=4444L,
+                      browser_type="firefox", headless=FALSE,
+                      image_tag=NULL, fresh_pull=FALSE) {    
+    image_tag <- imageTag(browser_type, headless, image_tag)
+    if (fresh_pull) system(paste("docker pull", image_tag))
+    dir <- createTmpDir()
+    docker_run_cmd <- dockerRunCmd(dir, image_tag, name, headless, port)  
+    output <- system(docker_run_cmd, intern=TRUE)
+    id <- substr(tail(output, 1), 1, 12)
+    print(paste0("Docker container created with name:", name, " id:", id))
+    list(id=id, name=name, dir=dir, port=port,
+         browser_type=browser_type, headless=headless)
+}
+
+containerRunning <- function(name="rselenium-container") {
+    id <- system(paste0("docker ps --filter 'name=", name,
+                        "' --format '{{.ID}}'"), intern=TRUE)
+    ifelse(length(id) > 0, TRUE, FALSE)
+}
+
+startServer <- function(container, url="localhost") {
+    if (containerRunning(container$name)) {
+        remDr <- remoteDriver(remoteServerAddr=url,
+                              port=container$port,
+                              browserName=container$browser_type)
+        list(remDr=remDr, container=container)
+    } else {
+        print(paste0("Docker container '", docker_name,
+                     "' is not ready."))
+    }
+}
+
+openSession <- function(remDr) {
+    ifelse(remDr$getStatus()$ready,
+           remDr$open(silent=TRUE),
+           print("Remote Driver not ready."))
+}
+
+dockerClose <- function(name="rselenium-container") {
+    if (containerRunning(name)) {
+        closed <- system(paste("docker stop", name), intern=TRUE)
+        print(paste0("Docker container '", closed, "' stopped."))
+    } else {
+        print(paste0("Docker container '", name, "' is not running."))
+    }
+}
+
+RSeleniumLayout <- function(html, width, height, fonts, device) {
+    server <- getOption("layoutEngine.RSelenium.server")
+    wd <- server$container$dir
+    asset_dir <- file.path(wd, "assets")
     ## Copy font files
     fontFiles <- fontFiles(fonts, device)
-    file.copy(fontFiles, assetDir)
+    file.copy(fontFiles, asset_dir)
     ## Convert any .pfb/.pfa to .ttf
     pffiles <- grepl("[.]pf[ab]$", fontFiles)
     if (any(pffiles)) {
@@ -92,17 +110,17 @@ RSeleniumLayout <- function(html, width, height, fonts, device) {
                           " -lang=ff -script ",
                           system.file("FF", "pf2ttf",
                                       package="layoutEngineRSelenium"),
-                          " ", file.path(assetDir, basename(i))
+                          " ", file.path(asset_dir, basename(i))
                           ))
         }}
     ## Copy all assets to asset directory
-    copyAssets(html, asssetDir)
+    copyAssets(html, asset_dir)
     file.copy(system.file("JS", "font-baseline", "index.js",
                           package="layoutEngineRSelenium"),
-              assetDir)
+              asset_dir)
     file.copy(system.file("JS", "layout.js",
                           package="layoutEngineRSelenium"),
-              assetDir)
+              asset_dir)
     ## Add script tags to font-baseline/index.js &  layout.js file
     body <- xml_find_first(html$doc, "body")
     xml_add_child(body, "script", src="assets/index.js")
@@ -116,43 +134,21 @@ RSeleniumLayout <- function(html, width, height, fonts, device) {
     fileConn <- file(paste0(wd, "/index.html"), "w")
     write(paste0(html$doc, collapse=""), file=fileConn, append=FALSE)
     close(fileConn)
-    ## Activate server and open connection to remote driver
-    server <- dockerServer(wd)
-    if (server$headless){
-        print("sleeping...")
-        Sys.sleep(server$timeout / 2)
-        print("waking...")
-    } else {
-        print("sleeping...")
-        Sys.sleep(server$timeout)
-        print("waking...")
-    }
-    ## Define RSelenium remote driver & open connection 
-    remDr <- remoteDriver(remoteServerAddr=server$url,
-                          port=server$port,
-                          browserName=server$browser)
-    remDr$open(silent=TRUE)
-    ## session <- remDr$sessionInfo
-    ## Navigate to a index.html file when browser is ready
-    remDr$navigate("file:///tmp/Rsrc/index.html")
+    ## Open RSelenium Session and navigate to index file
+    session <- openSession(server$remDr)
+    server$remDr$navigate("file:///tmp/src/index.html")
     ## Set the page <body> size to match R graphics device and
     ## add and execute function call from layout.js to calculate the page layout
-    remDr$executeScript(
-              script="
+    server$remDr$executeScript(
+                     script="
     const script = document.createElement('script');
     script.innerHTML = 'calculateLayout()';
     document.body.appendChild(script);
     ")   
     ## Get the layout info back to pass back to R
-    layoutCSV <- remDr$findElement(
+    layoutCSV <- server$remDr$findElement(
                            "id", "layoutEngineRSeleniumresult"
                        )$getElementAttribute("innerHTML")[[1]]
-    ## Close browser and destroy docker container 
-    if (server$headless | !server$persist) {
-        remDr$close()
-        dockerClosed <- system(paste("docker stop", server$name), intern=TRUE)
-    print(paste0("Docker container '", dockerClosed, "' closed."))
-    }
     ## Build data.frame with layout data
     layoutDF <- read.csv(textConnection(layoutCSV),
                          header=FALSE, stringsAsFactors=FALSE,
