@@ -18,13 +18,11 @@ createTmpDir <- function() {
     wd
 }
 
-imageTag <- function(browser_type, headless, image_tag) {
-    image <- ifelse(is.null(image_tag),
-                    paste0("selenium/standalone-", browser_type,
-                           ifelse(headless, ":latest", "-debug:latest")),
-                    image_tag)
-    print(paste("Container to be built from image:", image))
-    image
+imageTag <- function(browser_type, headless, image_tag_request) {
+    ifelse(is.null(image_tag_request),
+           paste0("selenium/standalone-", browser_type,
+                  ifelse(headless, ":latest", "-debug:latest")),
+           image_tag_request)
 }
 
 dockerRunCmd <- function(dir, image, name, headless, port) {
@@ -46,46 +44,78 @@ dockerRunCmd <- function(dir, image, name, headless, port) {
           image)
 }
 
-dockerRun <- function(name="rselenium-container", port=4444L,
+dockerRun <- function(name="rselenium-container",
+                      url="localhost", port=4444L,
                       browser_type="firefox", headless=FALSE,
-                      image_tag=NULL, fresh_pull=FALSE) {    
-    image_tag <- imageTag(browser_type, headless, image_tag)
-    if (fresh_pull) system(paste("docker pull", image_tag))
-    dir <- createTmpDir()
-    docker_run_cmd <- dockerRunCmd(dir, image_tag, name, headless, port)  
-    output <- system(docker_run_cmd, intern=TRUE)
-    id <- substr(tail(output, 1), 1, 12)
-    print(paste0("Docker container created with name:", name, " id:", id))
-    list(id=id, name=name, dir=dir, port=port,
+                      image_tag_request=NULL, fresh_pull=FALSE) {
+    image_tag <- imageTag(browser_type, headless, image_tag_request)
+    container_status <- getContainerStatus(name)
+    same_tag <- identical(image_tag, container_status$image_tag)
+    if (container_status$running & same_tag & !fresh_pull) {
+        print(paste0("Docker container '", name,
+                     "' is already running."))
+        id <- container_status$id
+    } else {
+        if (container_status$running) {
+            dockerClose(name)
+            print(paste0("Docker container '", name,
+                         "' is being rebuilt with updated image ",
+                         image_tag))
+        }
+        if (fresh_pull) system(paste("docker pull", image_tag))      
+        dir <- createTmpDir()
+        docker_run_cmd <- dockerRunCmd(dir, image_tag, name, headless, port)  
+        output <- system(docker_run_cmd, intern=TRUE)
+        id <- substr(tail(output, 1), 1, 12)
+        print(paste0("Docker container created with name=", name, " and id=", id))
+    }
+    list(id=id, name=name, dir=dir, url=url, port=port,
          browser_type=browser_type, headless=headless)
 }
 
-containerRunning <- function(name="rselenium-container") {
+getContainerStatus <- function(name="rselenium-container") {
     id <- system(paste0("docker ps --filter 'name=", name,
                         "' --format '{{.ID}}'"), intern=TRUE)
-    ifelse(length(id) > 0, TRUE, FALSE)
+    image_tag <- system(paste0("docker ps --filter 'name=", name,
+                        "' --format '{{.Image}}'"), intern=TRUE)
+    ifelse(length(id) > 0, running <- TRUE, running <- FALSE)
+    list(id=id, image_tag=image_tag, running=running)
 }
 
-startServer <- function(container, url="localhost") {
-    if (containerRunning(container$name)) {
-        remDr <- remoteDriver(remoteServerAddr=url,
+startServer <- function(container) {
+    container_status <- getContainerStatus(container$name)
+    if (container_status$running) {
+        remDr <- remoteDriver(remoteServerAddr=container$url,
                               port=container$port,
                               browserName=container$browser_type)
-        list(remDr=remDr, container=container)
+        print(paste0("Selenium server running in docker container '",
+                     container$name, "' and accessible at http://",
+                     container$url, ":", container$port))
+        server <- list(remDr=remDr, container=container)
+        options(layoutEngine.RSelenium.server=server)
+        server
     } else {
-        print(paste0("Docker container '", docker_name,
-                     "' is not ready."))
+        print(paste0("Docker container '", container$name,
+                     "' is not running. Please setup before requesting server start."))
     }
 }
 
 openSession <- function(remDr) {
-    ifelse(remDr$getStatus()$ready,
-           remDr$open(silent=TRUE),
-           print("Remote Driver not ready."))
+    if(remDr$getStatus()$ready){
+        sessions <- remDr$getSessions()
+        if (length(sessions) == 0) {
+        remDr$open(silent=TRUE)
+        remDr$getSessions()
+        }
+        remDr$getSessions()
+    } else {
+        print("Remote Driver not ready.")
+    }
 }
 
 dockerClose <- function(name="rselenium-container") {
-    if (containerRunning(name)) {
+    container_status <- getContainerStatus(name)    
+    if (container_status$running) {
         closed <- system(paste("docker stop", name), intern=TRUE)
         print(paste0("Docker container '", closed, "' stopped."))
     } else {

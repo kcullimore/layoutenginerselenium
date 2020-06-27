@@ -9,6 +9,7 @@
             layoutEngine.RSelenium.docker=list(running=FALSE,
                                                name="rselenium-container",
                                                fresh_pull=FALSE,
-                                               image_tag=NULL)
+                                               image_tag=NULL),
+            layoutEngine.RSelenium.server=list()
             )
 }
