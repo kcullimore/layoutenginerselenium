@@ -96,17 +96,17 @@ startServer <- function(container) {
         server
     } else {
         print(paste0("Docker container '", container$name,
-                     "' is not running. Please setup before requesting server start."))
+                     "' is not running. Please setup before",
+                     " requesting server start."))
     }
 }
 
 openSession <- function(remDr) {
-    if(remDr$getStatus()$ready){
+    remDr_status <- remDr$getStatus()
+    if(remDr_status$ready){
         sessions <- remDr$getSessions()
-        if (length(sessions) == 0) {
-        remDr$open(silent=TRUE)
-        remDr$getSessions()
-        }
+        number_of_sessions <- length(sessions)
+        if (number_of_sessions == 0) remDr$open(silent=TRUE)
         remDr$getSessions()
     } else {
         print("Remote Driver not ready.")
