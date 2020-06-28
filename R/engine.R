@@ -125,7 +125,7 @@ dockerClose <- function(name="rselenium-container") {
 
 RSeleniumLayout <- function(html, width, height, fonts, device) {
     server <- getOption("layoutEngine.RSelenium.server")
-    remDr <- remDr
+    remDr <- server$remDr
     wd <- server$container$dir
     asset_dir <- file.path(wd, "assets")
     ## Copy font files
