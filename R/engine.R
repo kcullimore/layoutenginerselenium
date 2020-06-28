@@ -138,7 +138,7 @@ RSeleniumLayout <- function(html, width, height, fonts, device) {
         if (nchar(fontforge) == 0) stop("FontForge not available")
         for (i in fontFiles[pffiles]) {
             system(paste0(fontforge,
-                          " -lang=ff -script ",
+                          " -quiet -lang=ff -script ",
                           system.file("FF", "pf2ttf",
                                       package="layoutEngineRSelenium"),
                           " ", file.path(asset_dir, basename(i))
