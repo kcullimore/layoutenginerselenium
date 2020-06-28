@@ -125,6 +125,7 @@ dockerClose <- function(name="rselenium-container") {
 
 RSeleniumLayout <- function(html, width, height, fonts, device) {
     server <- getOption("layoutEngine.RSelenium.server")
+    remDr <- remDr
     wd <- server$container$dir
     asset_dir <- file.path(wd, "assets")
     ## Copy font files
@@ -165,18 +166,18 @@ RSeleniumLayout <- function(html, width, height, fonts, device) {
     write(paste0(html$doc, collapse=""), file=fileConn, append=FALSE)
     close(fileConn)
     ## Open RSelenium Session and navigate to index file
-    session <- openSession(server$remDr)
-    server$remDr$navigate("file:///tmp/src/index.html")
+    session <- openSession(remDr)
+    remDr$navigate("file:///tmp/src/index.html")
     ## Set the page <body> size to match R graphics device and
     ## add and execute function call from layout.js to calculate the page layout
-    server$remDr$executeScript(
+    remDr$executeScript(
                      script="
     const script = document.createElement('script');
     script.innerHTML = 'calculateLayout()';
     document.body.appendChild(script);
     ")   
     ## Get the layout info back to pass back to R
-    layoutCSV <- server$remDr$findElement(
+    layoutCSV <- remDr$findElement(
                            "id", "layoutEngineRSeleniumresult"
                        )$getElementAttribute("innerHTML")[[1]]
     ## Build data.frame with layout data
