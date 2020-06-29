@@ -20,7 +20,5 @@ importFrom("utils",
            "read.csv")
 
 export("dockerRun",
-       "startServer",
-       "dockerClose",
        "RSeleniumLayout",
        "RSeleniumEngine")
