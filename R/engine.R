@@ -45,6 +45,19 @@ dockerRunCmd <- function(dir, image_tag, headless, port) {
         IP <- system("ipconfig getifaddr en0", intern=TRUE)
         ## Link docker to host display
         ## NOTE: Xquartz X11 Preferences/Security set "Allow connections from network clients"
+        ## display_setup <- paste(paste0("--env DISPLAY=", IP, ":0"),
+        ##                        "--env XAUTHORITY=/.Xauthority",
+        ##                        "--volume /tmp/.X11-unix:/tmp/.X11-unix",
+        ##                        paste0("--volume ", HOME, "/.Xauthority:/.Xauthority"))
+        display_setup <- "--env DISPLAY=docker.for.mac.host.internal:0"
+    } else if (os == "Windows") {
+        ## Container name
+        name <- "rselenium-container-win"
+        ## Get IP info
+        HOME <- system("echo $HOME", intern=TRUE)
+        IP <- system("ipconfig getifaddr en0", intern=TRUE)
+        ## Link docker to host display
+        ## NOTE: Xquartz X11 Preferences/Security set "Allow connections from network clients"
         display_setup <- paste(paste0("--env DISPLAY=", IP, ":0"),
                                "--env XAUTHORITY=/.Xauthority",
                                "--volume /tmp/.X11-unix:/tmp/.X11-unix",
