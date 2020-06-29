@@ -37,8 +37,19 @@ dockerRunCmd <- function(dir, image_tag, headless, port) {
         display_setup <- paste("--env DISPLAY=unix$DISPLAY",
                                "--volume /dev/shm:/dev/shm",
                                "--volume /tmp/.X11-unix:/tmp/.X11-unix")
+    } else if (os == "Darwin") {
+        ## Container name
+        name <- "rselenium-container-mac"
+        ## Get IP info 
+        IP <- system("ifconfig en0 | grep inet | awk '$1==\"inet\" {print $2}", intern=TRUE)
+        ## Link docker to host display
+        ## NOTE: Xquartz X11 Preferences/Security set "Allow connections from network clients"
+        display_setup <- paste(paste0("--env DISPLAY=", IP, ":0"),
+                               "--env XAUTHORITY=/.Xauthority",
+                               "--volume /tmp/.X11-unix:/tmp/.X11-unix",
+                               "--volume ~./Xauthority:/.Xauthority")
     } else {
-        stop("Only the Linux OS is supported by RSeleniumEngine at this time.")
+        stop("Only Linux OS & MacOS is supported by RSeleniumEngine at this time.")
     }
     list(name=name,
          cmd=paste("docker run -d --rm --name", name,
@@ -64,6 +75,17 @@ dockerRun <- function(url="localhost", port=4444L,
     ## Check if container is running and if the docker image has changed
     container_status <- getContainerStatus(name)
     same_tag <- identical(image_tag, container_status$image_tag)
+    ## Method to close container down
+    close <- function () {
+        container_status <- getContainerStatus(name)
+        if (container_status$running) {
+            closed <- system(paste("docker stop", name), intern=TRUE)
+            options(layoutEngine.RSelenium.server=list())
+            print(paste0("Docker container '", closed, "' stopped."))
+        } else {
+            print(paste0("Docker container '", name, "' is not running."))
+        }
+    }    
     ## Method to start RSelenium session
     startServer <- function() {
         container_status <- getContainerStatus(name)
@@ -80,17 +102,6 @@ dockerRun <- function(url="localhost", port=4444L,
             print(paste0("Docker container '", container$name,
                          "' is not running. Please setup before",
                          " requesting server start."))
-        }
-    }
-    ## Method to close container down
-    close <- function () {
-        container_status <- getContainerStatus(name)
-        if (container_status$running) {
-            closed <- system(paste("docker stop", name), intern=TRUE)
-            options(layoutEngine.RSelenium.server=list())
-            print(paste0("Docker container '", closed, "' stopped."))
-        } else {
-            print(paste0("Docker container '", name, "' is not running."))
         }
     }
     ## Either return details of running container or start new container
