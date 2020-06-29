@@ -40,8 +40,8 @@ dockerRunCmd <- function(dir, image_tag, headless, port) {
     } else if (os == "Darwin") {
         ## Container name
         name <- "rselenium-container-mac"
-        ## Get IP info 
-        IP <- system("ifconfig en0 | grep inet | awk '$1==\"inet\" {print $2}", intern=TRUE)
+        ## Get IP info
+        IP <- system("ipconfig getifaddr en0", intern=TRUE)
         ## Link docker to host display
         ## NOTE: Xquartz X11 Preferences/Security set "Allow connections from network clients"
         display_setup <- paste(paste0("--env DISPLAY=", IP, ":0"),
