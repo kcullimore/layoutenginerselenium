@@ -19,10 +19,12 @@ createTmpDir <- function() {
 }
 
 imageTag <- function(browser_type, headless, image_tag_request) {
-    ifelse(is.null(image_tag_request),
-           paste0("selenium/standalone-", browser_type,
-                  ifelse(headless, ":latest", "-debug:latest")),
-           image_tag_request)
+    if (is.null(image_tag_request)) {
+        paste0("selenium/standalone-", browser_type,
+               ifelse(headless, ":latest", "-debug:latest"))
+    } else {
+        image_tag_request
+    }
 }
 
 dockerRunCmd <- function(dir, image_tag, headless, port) {
