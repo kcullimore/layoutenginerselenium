@@ -19,6 +19,9 @@ importFrom("xml2",
 importFrom("utils",
            "read.csv")
 
-export("dockerRun",
+export("dockerContainer",
+       "rSServer",
+       "rSSSession",
+       "containerClose",
        "RSeleniumLayout",
        "RSeleniumEngine")

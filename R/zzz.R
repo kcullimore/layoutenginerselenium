@@ -1,15 +1,11 @@
-.onLoad <- function(libname, pkgname) {
+
+.onLoad <- function (libname, pkgname) {
+    system2("docker", args=c("stop", "rselenium-container"),
+            stdout=FALSE, stderr=FALSE, wait=FALSE)
     options(layoutEngine.backend=RSeleniumEngine,
-            layoutEngine.RSelenium.debug=list(timeout=2),
-            layoutEngine.RSelenium.browser=list(open=FALSE,
-                                                type="firefox",
-                                                port=4444L,
-                                                url="localhost",
-                                                headless=FALSE),
-            layoutEngine.RSelenium.docker=list(running=FALSE,
-                                               name="rselenium-container",
-                                               fresh_pull=FALSE,
-                                               image_tag=NULL),
-            layoutEngine.RSelenium.server=list()
-            )
+            layoutEngine.rSSSession=NULL)
+}
+
+.onAttach <- function(libname, pkgname) {
+    packageStartupMessage("Welcome to the RSelenium backend for the layout engine.")
 }
