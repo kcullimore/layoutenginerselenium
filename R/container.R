@@ -83,12 +83,8 @@ containerInfo <- function(name) {
         mounts <- system2("docker",
                           args=c("inspect",  "-f", "'{{.Mounts}}'", id),
                           stdout=TRUE, stderr=FALSE)
-        beg_string <- regexpr('(?<=bind  ).*', mounts, perl=TRUE)        
-        end_string <- regexpr('.+?(?=/layout)', mounts, perl=TRUE)
-        tmp_dir <- substr(mounts,
-                          beg_string[1],
-                          end_string[1] + attr(end_string, "match.length")[1])
-        dir <- paste0(tmp_dir, "layoutEngineRSelenium")
+        tmp <- strsplit(mounts, " ")
+        dir <- tmp[[1]][grep("layoutEngineRSelenium", tmp[[1]])]
     } else {
         id <- image <- dir <- NULL
     }
@@ -120,7 +116,7 @@ containerRun <- function(name, settings) {
         ## Create tmp directory for docker instance
         dir <- createTmpDir()
         run_args <- c("run",  "-d",  "--rm ", "--name", name,
-                      "--volume", paste0(dir, "/tmp/src"),
+                       "--volume", paste0(dir, ":/tmp/src"),
                       "--network", settings$network,
                       paste0("--shm-size=", settings$shm_size),
                       display_setup,
