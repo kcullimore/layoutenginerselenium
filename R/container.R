@@ -124,7 +124,7 @@ containerRun <- function(name, settings) {
                       display_setup,
                       "-p ", paste0(settings$port, ":", settings$port),
                       image)
-        system2("docker", run_args, stdout=FALSE, stderr=FALSE)
+        system2("docker", run_args, stdout=TRUE, stderr=FALSE)
         Sys.sleep(1.8)
         info <- containerInfo(name)
         message(paste0("Docker container created with name=",

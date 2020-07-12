@@ -35,7 +35,7 @@ rSSSessionClose <- function(rSS) {
 }
 
 rSSSession <- function(url="localhost", port=4444L,
-                       network="host", shm_size="2g",
+                       network="bridge", shm_size="1g",
                        browser_type="firefox", headless=FALSE,
                        image_request=NULL, fresh_pull=FALSE) {
 
