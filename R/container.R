@@ -45,11 +45,11 @@ displaySetup <- function(headless) {
                                              stdout=TRUE, stderr=FALSE)
             ## Link docker to host display
             ## NOTE: Xquartz X11 Preferences/Security set "Allow connections from network clients"
-            ## display_setup <- paste(paste0("--env DISPLAY=", IP, ":0"),
-            ##                        "--env XAUTHORITY=/.Xauthority",
-            ##                        "--volume /tmp/.X11-unix:/tmp/.X11-unix",
-            ##                        paste0("--volume ", HOME, "/.Xauthority:/.Xauthority"))
-            display_setup <- "--env DISPLAY=docker.for.mac.host.internal:0"
+            display_setup <- paste(paste0("--env DISPLAY=", IP, ":0"),
+                                   "--env XAUTHORITY=/.Xauthority",
+                                   "--volume /tmp/.X11-unix:/tmp/.X11-unix",
+                                   paste0("--volume ", HOME, "/.Xauthority:/.Xauthority"))
+            ##display_setup <- "--env DISPLAY=docker.for.mac.host.internal:0"
         } else if (os == "Windows") {
             ## Get IP info
             HOME <- system2("echo", args=c("$HOME"),
@@ -80,13 +80,15 @@ containerInfo <- function(name) {
                          args=c("ps",  "--filter", paste0("'name=", name, "'"),
                                 "--format", "'{{.Image}}'"),
                          stdout=TRUE, stderr=FALSE)
-        dir <- paste0("/tmp/",
-                      system2("docker",
-                              args=c("inspect",  "-f",  "'{{.Mounts}}'",
-                                     id, "|",  "grep",  "-Po", "'.+?(?=/layout)'",
-                                     "|",  "grep",  "-Po",  "'\\b(\\w+)$'"),
-                              stdout=TRUE, stderr=FALSE),
-                      "/layoutEngineRSelenium")
+        mounts <- system2("docker",
+                          args=c("inspect",  "-f", "'{{.Mounts}}'", id),
+                          stdout=TRUE, stderr=FALSE)
+        beg_string <- regexpr('(?<=bind  ).*', mounts, perl=TRUE)        
+        end_string <- regexpr('.+?(?=/layout)', mounts, perl=TRUE)
+        tmp_dir <- substr(mounts,
+                          beg_string[1],
+                          end_string[1] + attr(end_string, "match.length")[1])
+        dir <- paste0(tmp_dir, "layoutEngineRSelenium")
     } else {
         id <- image <- dir <- NULL
     }
@@ -118,7 +120,7 @@ containerRun <- function(name, settings) {
         ## Create tmp directory for docker instance
         dir <- createTmpDir()
         run_args <- c("run",  "-d",  "--rm ", "--name", name,
-                      "--volume", paste0(dir, ":/tmp/src"),
+                      "--volume", paste0(dir, "/tmp/src"),
                       "--network", settings$network,
                       paste0("--shm-size=", settings$shm_size),
                       display_setup,
