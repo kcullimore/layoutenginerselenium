@@ -135,6 +135,7 @@ containerClose <- function(name="rselenium-container") {
     if (info$running) {
         closed <- system2("docker", args=c("stop", name), stdout=TRUE, stderr=FALSE)
         message(paste0("Docker container '", closed, "' stopped and removed."))
+        options(layoutEngine.rSSSession=NULL)         
     } else {
         message(paste0("Docker container '", name, "' is not running."))
     }
@@ -153,7 +154,7 @@ dockerContainer <- function(settings) {
     }
 
     close <- function () {
-        containerClose(name)      
+        containerClose(name)
     }
 
     list(name=name, getInfo=getInfo, run=run, close=close)

@@ -29,8 +29,7 @@ rSSSessionClose <- function(rSS) {
     if (!rSS$getStatus()$ready) {
         message("RSelenium browser session is not active so cannot be closed.")
     } else {
-        rSS$container$close()
-        options(layoutEngine.rSSSession=NULL)        
+        rSS$container$close() 
     }
 }
 
