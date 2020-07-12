@@ -45,11 +45,11 @@ displaySetup <- function(headless) {
                                              stdout=TRUE, stderr=FALSE)
             ## Link docker to host display
             ## NOTE: Xquartz X11 Preferences/Security set "Allow connections from network clients"
+            ## Run "xhost + 127.0.0.1"
             display_setup <- paste(paste0("--env DISPLAY=", IP, ":0"),
                                    "--env XAUTHORITY=/.Xauthority",
                                    "--volume /tmp/.X11-unix:/tmp/.X11-unix",
                                    paste0("--volume ", HOME, "/.Xauthority:/.Xauthority"))
-            ##display_setup <- "--env DISPLAY=docker.for.mac.host.internal:0"
         } else if (os == "Windows") {
             ## Get IP info
             HOME <- system2("echo", args=c("$HOME"),
