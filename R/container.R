@@ -120,7 +120,7 @@ containerRun <- function(name, settings) {
                       "--network", settings$network,
                       paste0("--shm-size=", settings$shm_size),
                       display_setup,
-                      "-p ", paste0(settings$port, ":", settings$port),
+                      "-p ", settings$port,
                       image)
         system2("docker", run_args, stdout=TRUE, stderr=FALSE)
         Sys.sleep(2)
