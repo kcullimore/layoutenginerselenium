@@ -1,6 +1,7 @@
 
 
 rSSSessionOpen <- function(rSS) {
+    browser()
     rSSS_ready <- FALSE    
     rSS_ready <- rSS$getStatus()$ready
     if (!rSS_ready) {

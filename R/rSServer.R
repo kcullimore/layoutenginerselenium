@@ -16,9 +16,17 @@ rSServerOpen <- function(settings) {
     container_info <- container$getInfo()
 
     ## RSelenium remote driver
-    remDr <- remoteDriver(remoteServerAddr=settings$url,
-                          port=settings$port,
-                          browserName=settings$browser_type)
+    if (settings$browser_type == "firefox") {
+        remDr <- remoteDriver(remoteServerAddr=settings$url,
+                              port=settings$port,
+                              browserName=settings$browser_type,
+                              extraCapabilities = list(marionette=TRUE))
+    } else {
+        remDr <- remoteDriver(remoteServerAddr=settings$url,
+                              port=settings$port,
+                              browserName=settings$browser_type)
+    }     
+
     list(remDr=remDr, container=container, dir=container_info$dir)
 }
 
