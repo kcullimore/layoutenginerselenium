@@ -19,8 +19,7 @@ rSServerOpen <- function(settings) {
     if (settings$browser_type == "firefox") {
         remDr <- remoteDriver(remoteServerAddr=settings$url,
                               port=settings$portRS,
-                              browserName=settings$browser_type,
-                              extraCapabilities = list(marionette=TRUE))
+                              browserName=settings$browser_type)
     } else {
         remDr <- remoteDriver(remoteServerAddr=settings$url,
                               port=settings$portRS,

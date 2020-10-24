@@ -34,12 +34,13 @@ rSSSessionClose <- function(rSS) {
     }
 }
 
-rSSSession <- function(url="localhost", portClient="4444:4444", portRS=4444L,
+rSSSession <- function(url="localhost", portRS=4444L, portClient="4444",
                        network="bridge", shm_size="1g",
                        browser_type="firefox", headless=FALSE,
                        image_request=NULL, fresh_pull=FALSE) {
 
-    settings <- list(url=url, portClient=portClient, portRS=portRS, network=network, shm_size=shm_size,
+    settings <- list(url=url, portRS=portRS, portClient=portClient,
+                     network=network, shm_size=shm_size,
                      browser_type=browser_type, headless=headless,
                      image_request=image_request, fresh_pull=fresh_pull)
 
